@@ -4,17 +4,40 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+env:
+  KSPASS: ${{ secrets.KEYSTORE_PASSWORD }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - name: Chiave di firma (creata una volta sola)
+        run: |
+          [ -n "$KSPASS" ] || { echo "Manca il secret KEYSTORE_PASSWORD"; exit 1; }
+          if [ ! -f release.keystore ]; then
+            keytool -genkeypair -keystore release.keystore -storetype PKCS12 \
+              -alias cuelist -keyalg RSA -keysize 2048 -validity 36500 \
+              -storepass "$KSPASS" -keypass "$KSPASS" -dname "CN=CueList"
+            git config user.name "github-actions"
+            git config user.email "actions@github.com"
+            git add release.keystore
+            git commit -m "Aggiunge chiave di firma"
+            git push
+          fi
+
       - name: Decomprimi lo zip
         run: |
-          unzip -q "$(ls *.zip | head -1)" -d src
+          unzip -q cuelist-android.zip -d src
           P=$(find src -name package.json -not -path '*/node_modules/*' | head -1)
           echo "APP_DIR=$(dirname "$P")" >> $GITHUB_ENV
+
+      - name: Inserisci numero di build
+        run: sed -i "s/__BUILD__/${{ github.run_number }}/g" "$APP_DIR/www/index.html"
 
       - uses: actions/setup-node@v4
         with:
@@ -22,24 +45,4 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Installa dipendenze
-        working-directory: ${{ env.APP_DIR }}
-        run: npm install
-
-      - name: Crea progetto Android
-        working-directory: ${{ env.APP_DIR }}
-        run: |
-          npx cap add android
-          npx cap sync android
-
-      - name: Compila APK
-        working-directory: ${{ env.APP_DIR }}/android
-        run: ./gradlew assembleDebug
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cuelist-apk
-          path: ${{ env.APP_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk
+          distributi
