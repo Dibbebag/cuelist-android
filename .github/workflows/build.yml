@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Chiave di firma (creata una volta sola)
         run: |
@@ -30,11 +32,16 @@ jobs:
             git push
           fi
 
-      - name: Decomprimi lo zip
+      - name: Decomprimi lo zip piu recente
         run: |
-          unzip -q cuelist-android.zip -d src
+          Z=$(for f in *.zip; do echo "$(git log -1 --format=%ct -- "$f") $f"; done | sort -n | tail -1 | cut -d' ' -f2-)
+          echo "Uso lo zip: $Z"
+          unzip -q "$Z" -d src
           P=$(find src -name package.json -not -path '*/node_modules/*' | head -1)
           echo "APP_DIR=$(dirname "$P")" >> $GITHUB_ENV
+
+      - name: Verifica che lo zip sia quello nuovo
+        run: grep -q 'id="gear"' "$APP_DIR/www/index.html" || { echo "ERRORE - lo zip usato e quello vecchio, senza Impostazioni"; exit 1; }
 
       - name: Inserisci numero di build
         run: sed -i "s/__BUILD__/${{ github.run_number }}/g" "$APP_DIR/www/index.html"
