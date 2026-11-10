@@ -1,0 +1,53 @@
+name: Build Windows
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decomprimi lo zip piu recente
+        shell: bash
+        run: |
+          Z=$(for f in *.zip; do echo "$(git log -1 --format=%ct -- "$f") $f"; done | sort -n | tail -1 | cut -d' ' -f2-)
+          echo "Uso lo zip: $Z"
+          7z x "$Z" -osrc -y > /dev/null
+          D=$(dirname "$(find src -maxdepth 2 -name capacitor.config.json | head -1)")
+          echo "APP_DIR=$D" >> $GITHUB_ENV
+
+      - {uses: actions/setup-node@v4, with: {node-version: 20}}
+
+      - name: Scarica la libreria audio con ASIO
+        shell: bash
+        continue-on-error: true
+        working-directory: ${{ env.APP_DIR }}/windows
+        run: |
+          mkdir -p asio
+          curl -fsSL -o asio/libportaudio64bit-asio.dll https://raw.githubusercontent.com/spatialaudio/portaudio-binaries/master/libportaudio64bit-asio.dll
+
+      - name: Prepara e compila
+        shell: bash
+        working-directory: ${{ env.APP_DIR }}/windows
+        run: |
+          mkdir -p www asio
+          cp -r ../www/. www/
+          cp package.win.json package.json
+          sed -i "s/__BUILD__/${{ github.run_number }}/g" www/index.html
+          npm install
+          npx electron-builder --win nsis portable --publish never
+
+      - name: Pubblica release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "w${{ github.run_number }}" "$APP_DIR/windows/dist/CueList-Setup.exe" "$APP_DIR/windows/dist/CueList-Portable.exe" --repo "$GITHUB_REPOSITORY" --prerelease --title "Windows build ${{ github.run_number }}" --notes "Build automatica per Windows"
