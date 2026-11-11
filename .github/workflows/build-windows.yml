@@ -41,13 +41,18 @@ jobs:
           mkdir -p www asio
           cp -r ../www/. www/
           cp package.win.json package.json
+          npm pkg set version=1.0.${{ github.run_number }}
           sed -i "s/__BUILD__/${{ github.run_number }}/g" www/index.html
           npm install
           npx electron-builder --win nsis portable --publish never
+          node make-latest.js ${{ github.run_number }}
 
       - name: Pubblica release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "w${{ github.run_number }}" "$APP_DIR/windows/dist/CueList-Setup.exe" "$APP_DIR/windows/dist/CueList-Portable.exe" --repo "$GITHUB_REPOSITORY" --prerelease --title "Windows build ${{ github.run_number }}" --notes "Build automatica per Windows"
+          D="$APP_DIR/windows/dist"
+          gh release create "w${{ github.run_number }}" "$D/CueList-Setup.exe" "$D/CueList-Portable.exe" --repo "$GITHUB_REPOSITORY" --prerelease --title "Windows build ${{ github.run_number }}" --notes "Build automatica per Windows"
+          gh release view windows-latest --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 || gh release create windows-latest --repo "$GITHUB_REPOSITORY" --prerelease --title "Windows - aggiornamento automatico" --notes "Serve all'aggiornamento automatico del programma: non scaricare da qui."
+          gh release upload windows-latest "$D/CueList-Setup.exe" "$D/latest.yml" --clobber --repo "$GITHUB_REPOSITORY"
