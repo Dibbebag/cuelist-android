@@ -1,3 +1,4 @@
+1794401303013.jpg
 # Cue List
 
 Cue List è un'app per lanciare audio dal vivo con una **lista di cue**: un grande tasto **GO**, il tasto **PANIC**, fade, tempi di attesa, gruppi, uscite separate per Base e Click, spettro del brano e molto altro. È pensata per teatro, musica dal vivo, eventi e sonorizzazioni. Gira come app Android, come programma per Windows e anche in un normale browser (Chrome).
