@@ -2,6 +2,25 @@
 
 Le modifiche sono elencate dalla più recente alla più vecchia.
 
+## 11 novembre 2026 – aggiornamento 6
+### Aggiunto
+- **Link diretti per scaricare**: Android e Windows si scaricano con un link fisso che punta sempre all'ultima versione, senza passare dalle pagine di GitHub. Il README li riporta in cima alla sezione *Scarica e installa*.
+- **Schermata iniziale** all'avvio: Nuovo show, Apri ultimo show, Apri show da archivio.
+- **Doppio clic su un cursore**: riporta il valore predefinito (volumi, pan, master).
+- **Opzione per nascondere i master in modalità Show** (Impostazioni → Volumi e pan in tempo reale).
+- **Animazioni**: la pagina Impostazioni entra da destra e le sezioni scorrono lateralmente quando le apri. Disattivate se il sistema chiede di ridurre le animazioni.
+- **README**: logo in cima alla pagina e nuova sezione sulla schermata iniziale.
+
+### Corretto
+- **Doppio clic sugli slider**: ora riporta davvero il valore predefinito, anche su telefono e con i cursori che si aggiornano in tempo reale.
+- **Chiusura delle Impostazioni**: la pagina esce verso destra, speculare all'ingresso.
+- **Sezioni delle Impostazioni**: l'animazione ora parte a ogni apertura e chiusura, non solo la prima volta. Le sezioni entrano da destra e, in uscita, tornano verso destra.
+- **Schermata iniziale**: scompare verso l'alto e la pagina delle cue si mostra dall'inizio, senza scorrere.
+
+### Modificato
+- **Nuovo logo** in tutta l'app: icona Android e Windows, schermata di avvio, intestazione, Crediti e schermata iniziale.
+- Nuovo show salva prima la scaletta precedente negli Autosalvataggi.
+
 ## 11 novembre 2026 – telecomando
 ### Aggiunto
 - **Telecomando da tablet o telefono** (solo Windows): il computer suona e il tablet, sulla stessa rete, mostra la vista show con GO, Indietro, Avanti, PANIC, lista delle cue con avanzamento e Stop per le cue in riproduzione. Si attiva in Impostazioni → *Telecomando*, protetto da un PIN, con porta e PIN modificabili.
