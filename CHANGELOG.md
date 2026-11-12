@@ -10,16 +10,18 @@ Le modifiche sono elencate dalla più recente alla più vecchia.
 - **Opzione per nascondere i master in modalità Show** (Impostazioni → Volumi e pan in tempo reale).
 - **Animazioni**: la pagina Impostazioni entra da destra e le sezioni scorrono lateralmente quando le apri. Disattivate se il sistema chiede di ridurre le animazioni.
 - **README**: logo in cima alla pagina e nuova sezione sulla schermata iniziale.
+- **Verifica 4 uscite ASIO** in Impostazioni → Uscita audio: mostra se il driver ASIO accetta 4 uscite e, in caso contrario, il messaggio del driver.
+
+### Modificato
+- **Logo vettoriale**: il logo è ricalcolato come tracciato vettoriale (SVG) e nell'app, nelle icone, nella schermata di avvio e nel README resta nitido su PC e su schermi ad alta risoluzione.
+- **Nuovo logo** in tutta l'app: icona Android e Windows, schermata di avvio, intestazione, Crediti e schermata iniziale.
+- Nuovo show salva prima la scaletta precedente negli Autosalvataggi.
 
 ### Corretto
 - **Doppio clic sugli slider**: ora riporta davvero il valore predefinito, anche su telefono e con i cursori che si aggiornano in tempo reale.
 - **Chiusura delle Impostazioni**: la pagina esce verso destra, speculare all'ingresso.
 - **Sezioni delle Impostazioni**: l'animazione ora parte a ogni apertura e chiusura, non solo la prima volta. Le sezioni entrano da destra e, in uscita, tornano verso destra.
 - **Schermata iniziale**: scompare verso l'alto e la pagina delle cue si mostra dall'inizio, senza scorrere.
-
-### Modificato
-- **Nuovo logo** in tutta l'app: icona Android e Windows, schermata di avvio, intestazione, Crediti e schermata iniziale.
-- Nuovo show salva prima la scaletta precedente negli Autosalvataggi.
 
 ## 11 novembre 2026 – telecomando
 ### Aggiunto
