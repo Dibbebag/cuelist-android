@@ -43,7 +43,7 @@ jobs:
             "-I$S/common" "-I$S/host" "-I$S/host/pc" \
             asiotest.cpp \
             "$S/common/asio.cpp" "$S/host/asiodrivers.cpp" "$S/host/pc/asiolist.cpp" \
-            ole32.lib user32.lib uuid.lib -Feasiotest.exe
+                        ole32.lib user32.lib uuid.lib advapi32.lib -Feasiotest.exe
 
       - uses: actions/upload-artifact@v4
         with:
