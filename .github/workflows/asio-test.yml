@@ -1,0 +1,52 @@
+name: ASIO test (Windows)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: app
+
+      - name: Scarica l'SDK ASIO dal repository privato
+        uses: actions/checkout@v4
+        with:
+          repository: Dibbebag/asio-sdk
+          token: ${{ secrets.ASIO_SDK_TOKEN }}
+          path: sdk
+
+      - name: Estrai l'SDK e trova le sorgenti
+        shell: bash
+        run: |
+          Z=$(find sdk -name '*.zip' -not -path '*/.git/*' | head -1)
+          if [ -n "$Z" ]; then 7z x "$Z" -osdkx -y > /dev/null; fi
+          P=$(find sdk sdkx -name asiodrivers.cpp 2>/dev/null | head -1)
+          if [ -z "$P" ]; then echo "asiodrivers.cpp non trovato nell'SDK"; exit 1; fi
+          D=$(cd "$(dirname "$P")/.." && pwd)
+          echo "SDK_DIR=$D" >> $GITHUB_ENV
+          echo "SDK in: $D"
+          ls "$D" "$D/host" "$D/common" | head -50
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Compila asiotest
+        shell: bash
+        run: |
+          cd app/asio-test
+          S="$SDK_DIR"
+          cl /nologo /EHsc /O2 /std:c++17 /DWIN32 /D_CONSOLE \
+            /I"$S/common" /I"$S/host" /I"$S/host/pc" \
+            asiotest.cpp \
+            "$S/common/asio.cpp" "$S/host/asiodrivers.cpp" "$S/host/pc/asiolist.cpp" \
+            ole32.lib user32.lib uuid.lib /Feasiotest.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asiotest
+          path: app/asio-test/asiotest.exe
