@@ -39,8 +39,8 @@ jobs:
         run: |
           cd app/asio-test
           S="$SDK_DIR"
-          INC=$(find "$S" -type d -not -path '*/.git*' | sed 's/^/-I/' | tr '\n' ' ')
-          cl -nologo -EHsc -O2 -std:c++17 -DWIN32 -D_CONSOLE $INC \
+          cl -nologo -EHsc -O2 -std:c++17 -DWIN32 -D_CONSOLE \
+            "-I$S/common" "-I$S/host" "-I$S/host/pc" \
             asiotest.cpp \
             "$S/common/asio.cpp" "$S/host/asiodrivers.cpp" "$S/host/pc/asiolist.cpp" \
             ole32.lib user32.lib uuid.lib -Feasiotest.exe
