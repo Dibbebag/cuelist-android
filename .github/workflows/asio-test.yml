@@ -31,7 +31,6 @@ jobs:
           D=$(cd "$(dirname "$P")/.." && pwd)
           echo "SDK_DIR=$D" >> $GITHUB_ENV
           echo "SDK in: $D"
-          ls "$D" "$D/host" "$D/common" | head -50
 
       - uses: ilammy/msvc-dev-cmd@v1
 
@@ -40,11 +39,11 @@ jobs:
         run: |
           cd app/asio-test
           S="$SDK_DIR"
-          cl /nologo /EHsc /O2 /std:c++17 /DWIN32 /D_CONSOLE \
-            /I"$S/common" /I"$S/host" /I"$S/host/pc" \
+          INC=$(find "$S" -type d -not -path '*/.git*' | sed 's/^/-I/' | tr '\n' ' ')
+          cl -nologo -EHsc -O2 -std:c++17 -DWIN32 -D_CONSOLE $INC \
             asiotest.cpp \
             "$S/common/asio.cpp" "$S/host/asiodrivers.cpp" "$S/host/pc/asiolist.cpp" \
-            ole32.lib user32.lib uuid.lib /Feasiotest.exe
+            ole32.lib user32.lib uuid.lib -Feasiotest.exe
 
       - uses: actions/upload-artifact@v4
         with:
