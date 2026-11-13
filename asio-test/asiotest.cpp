@@ -10,9 +10,12 @@
 #include "asio.h"
 #include "asiodrivers.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 extern bool loadAsioDriver(char* name);
 extern void removeCurrentDriver();
-extern IASIO* theAsioDriver;
 
 static ASIOBufferInfo infos[32];
 static ASIOChannelInfo chInfo;
