@@ -15,7 +15,6 @@
 #endif
 
 extern bool loadAsioDriver(char* name);
-extern void removeCurrentDriver();
 
 static ASIOBufferInfo infos[32];
 static ASIOChannelInfo chInfo;
@@ -92,7 +91,7 @@ int main(int argc, char** argv) {
     ASIOError err = ASIOInit(&di);
     if (err != ASE_OK) {
         printf("ERRORE ASIOInit: %ld\n", (long)err);
-        removeCurrentDriver();
+        ad.removeCurrentDriver();
         CoUninitialize();
         return 1;
     }
@@ -129,7 +128,7 @@ int main(int argc, char** argv) {
     if (err != ASE_OK) {
         printf("ERRORE ASIOCreateBuffers: %ld\n", (long)err);
         ASIOExit();
-        removeCurrentDriver();
+        ad.removeCurrentDriver();
         CoUninitialize();
         return 1;
     }
@@ -156,7 +155,7 @@ int main(int argc, char** argv) {
     running = false;
     ASIODisposeBuffers();
     ASIOExit();
-    removeCurrentDriver();
+    ad.removeCurrentDriver();
     CoUninitialize();
     printf("Fine.\n");
     return 0;
