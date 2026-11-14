@@ -34,6 +34,47 @@ jobs:
           mkdir -p asio
           curl -fsSL -o asio/libportaudio64bit-asio.dll https://raw.githubusercontent.com/spatialaudio/portaudio-binaries/master/libportaudio64bit-asio.dll
 
+      - name: Scarica l'SDK ASIO per il motore
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: Dibbebag/asio-sdk
+          token: ${{ secrets.ASIO_SDK_TOKEN }}
+          path: sdk
+
+      - name: Estrai l'SDK
+        shell: bash
+        continue-on-error: true
+        run: |
+          Z=$(find sdk -name '*.zip' -not -path '*/.git/*' | head -1)
+          if [ -n "$Z" ]; then 7z x "$Z" -osdkx -y > /dev/null; fi
+          P=$(find sdk sdkx -name asiodrivers.cpp 2>/dev/null | head -1)
+          if [ -z "$P" ]; then echo "SDK non trovato"; exit 1; fi
+          D=$(cd "$(dirname "$P")/.." && pwd)
+          echo "SDK_DIR=$D" >> $GITHUB_ENV
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Compila il motore ASIO
+        shell: bash
+        run: |
+          mkdir -p "$APP_DIR/windows/engine"
+          if [ -n "$SDK_DIR" ]; then
+            cd "$APP_DIR/asio-engine"
+            S="$SDK_DIR"
+            cl -nologo -EHsc -O2 -std:c++17 -DWIN32 -D_CONSOLE \
+              "-I$S/common" "-I$S/host" "-I$S/host/pc" \
+              asio-engine.cpp \
+              "$S/common/asio.cpp" "$S/host/asiodrivers.cpp" "$S/host/pc/asiolist.cpp" \
+              ole32.lib user32.lib uuid.lib advapi32.lib -Feasio-engine.exe || exit 1
+            cp -f asio-engine.exe "$GITHUB_WORKSPACE/$APP_DIR/windows/engine/asio-engine.exe" 2>/dev/null || true
+            cd "$GITHUB_WORKSPACE"
+          fi
+          if [ ! -s "$APP_DIR/windows/engine/asio-engine.exe" ]; then
+            echo "Motore ASIO non compilato: il programma lo segnala all'avvio"
+            : > "$APP_DIR/windows/engine/asio-engine.exe"
+          fi
+
       - name: Prepara e compila
         shell: bash
         working-directory: ${{ env.APP_DIR }}/windows
