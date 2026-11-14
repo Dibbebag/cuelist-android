@@ -355,6 +355,36 @@ int main(int argc, char** argv) {
                     printf("OK frequenza %.0f Hz, buffer %ld\n", r, bufSize);
                 }
             }
+        } else if (cmd == "tone") {
+            std::string list;
+            in >> list;
+            bool ok;
+            std::vector<int> outs = parseOuts(list, ok);
+            if (!ok || outs.empty()) {
+                printf("ERR uscite non valide per il test: il driver ha %ld uscite\n", numOut);
+            } else {
+                Clip t;
+                t.ch = (int)outs.size();
+                t.frames = (long)(2.0 * sampleRate);
+                t.origFrames = t.frames;
+                t.sr = (unsigned long)sampleRate;
+                t.origSr = t.sr;
+                t.d.assign((size_t)t.frames * t.ch, 0.0f);
+                for (long f = 0; f < t.frames; f++)
+                    for (int c = 0; c < t.ch; c++) {
+                        double ph = 2.0 * M_PI * (220.0 * (c + 1)) * (double)f / sampleRate;
+                        t.d[(size_t)f * t.ch + c] = (float)(0.2 * sin(ph));
+                    }
+                std::lock_guard<std::mutex> lk(mtx);
+                clips[-1] = std::move(t);
+                voices.erase(std::remove_if(voices.begin(), voices.end(),
+                             [](const Voice& v) { return v.id == -1; }), voices.end());
+                Voice v;
+                v.id = -1; v.clip = -1; v.pos = 0; v.gain = 1.0f; v.fade = 1.0f; v.fadeStep = 0.0f;
+                v.stopping = false; v.done = false; v.outs = outs;
+                voices.push_back(v);
+                printf("OK tono su %d uscite\n", (int)outs.size());
+            }
         } else if (cmd == "vol") {
             int id; float g;
             in >> id >> g;
