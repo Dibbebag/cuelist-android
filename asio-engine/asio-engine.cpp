@@ -20,13 +20,16 @@
 #include <sstream>
 #include <iostream>
 #include <algorithm>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 #include "asiosys.h"
 #include "asio.h"
 #include "asiodrivers.h"
 
 extern bool loadAsioDriver(char* name);
 
-struct Clip { std::vector<float> d; int ch = 0; long frames = 0; unsigned long sr = 0; };
+struct Clip { std::vector<float> d; std::vector<float> orig; int ch = 0; long frames = 0; long origFrames = 0; unsigned long sr = 0; unsigned long origSr = 0; };
 struct Voice {
     int id; int clip; long long pos; float gain; float fade; float fadeStep;
     bool stopping; bool done; std::vector<int> outs;
@@ -87,7 +90,7 @@ static void render(long idx) {
 }
 
 static void bufferSwitch(long idx, ASIOBool) { render(idx); ASIOOutputReady(); }
-static void sampleRateChanged(ASIOSampleRate) {}
+static void sampleRateChanged(ASIOSampleRate r) { printf("ATTENZIONE il driver ha cambiato frequenza: %.0f Hz (usa il comando rate)\n", r); fflush(stdout); }
 static long asioMessage(long sel, long val, void*, double*) {
     switch (sel) {
         case kAsioSelectorSupported:
@@ -160,6 +163,58 @@ static bool loadWav(const char* path, Clip& c, std::string& err) {
     return true;
 }
 
+// ---- ricampionamento (sinc finestrato, Blackman): converte un brano alla frequenza del driver ----
+static std::vector<float> resampleInterleaved(const std::vector<float>& in, int ch, long inFrames,
+                                              double srcR, double dstR, long& outFrames) {
+    double ratio = dstR / srcR;
+    outFrames = (long)floor((double)inFrames * ratio);
+    std::vector<float> out((size_t)outFrames * ch, 0.0f);
+    double cutoff = ratio < 1.0 ? ratio : 1.0;
+    double half = 24.0 / cutoff;
+    if (half > 400.0) half = 400.0;
+    const double TS = 256.0;
+    int tn = (int)ceil(half * TS) + 2;
+    std::vector<double> T(tn, 0.0);
+    for (int k = 0; k < tn; k++) {
+        double x = k / TS;
+        if (x >= half) { T[k] = 0.0; continue; }
+        double a = M_PI * cutoff * x;
+        double sinc = (a < 1e-12) ? 1.0 : sin(a) / a;
+        double w = 0.42 + 0.5 * cos(M_PI * x / half) + 0.08 * cos(2.0 * M_PI * x / half);
+        T[k] = cutoff * sinc * w;
+    }
+    auto lookup = [&](double x) -> double {
+        double ax = fabs(x) * TS;
+        int k = (int)ax;
+        if (k >= tn - 1) return 0.0;
+        double f = ax - k;
+        return T[k] + (T[k + 1] - T[k]) * f;
+    };
+    int H = (int)ceil(half);
+    for (int c = 0; c < ch; c++) {
+        for (long j = 0; j < outFrames; j++) {
+            double t = (double)j / ratio;
+            long center = (long)floor(t);
+            double acc = 0.0, wsum = 0.0;
+            for (long i = center - H + 1; i <= center + H; i++) {
+                double wt = lookup((double)i - t);
+                if (wt == 0.0) continue;
+                long k = i < 0 ? 0 : (i >= inFrames ? inFrames - 1 : i);
+                acc += wt * in[(size_t)k * ch + c];
+                wsum += wt;
+            }
+            out[(size_t)j * ch + c] = (float)(fabs(wsum) > 1e-9 ? acc / wsum : 0.0);
+        }
+    }
+    return out;
+}
+static void rebuild(Clip& c, double dstR) {
+    if ((double)c.origSr == dstR) { c.d = c.orig; c.frames = c.origFrames; return; }
+    long fr = 0;
+    c.d = resampleInterleaved(c.orig, c.ch, c.origFrames, (double)c.origSr, dstR, fr);
+    c.frames = fr;
+}
+
 static std::vector<int> parseOuts(const std::string& s, bool& ok) {
     std::vector<int> r;
     std::stringstream ss(s);
@@ -175,6 +230,16 @@ static std::vector<int> parseOuts(const std::string& s, bool& ok) {
 
 int main(int argc, char** argv) {
     CoInitialize(0);
+    if (argc >= 2 && strcmp(argv[1], "--list") == 0) {
+        AsioDrivers lst;
+        char* nm[32];
+        for (int i = 0; i < 32; i++) nm[i] = new char[64];
+        long cnt = lst.getDriverNames(nm, 32);
+        for (long i = 0; i < cnt; i++) printf("DRV %s\n", nm[i]);
+        fflush(stdout);
+        CoUninitialize();
+        return 0;
+    }
     if (argc < 2) {
         printf("Uso: asio-engine.exe \"<nome driver>\"\n");
         CoUninitialize();
@@ -236,12 +301,12 @@ int main(int argc, char** argv) {
             in >> id; std::getline(in >> std::ws, path);
             Clip c; std::string err;
             if (!loadWav(path.c_str(), c, err)) { printf("ERR %s\n", err.c_str()); }
-            else if ((double)c.sr != sampleRate) {
-                printf("ERR il file e a %lu Hz, il driver a %.0f Hz: esporta il file a %.0f Hz\n", c.sr, sampleRate, sampleRate);
-            } else {
+            else {
+                c.orig = std::move(c.d); c.origFrames = c.frames; c.origSr = c.sr;
+                rebuild(c, sampleRate);
                 std::lock_guard<std::mutex> lk(mtx);
                 clips[id] = std::move(c);
-                printf("OK caricato %d\n", id);
+                printf("OK caricato %d (%lu Hz -> %.0f Hz)\n", id, clips[id].origSr, sampleRate);
             }
         } else if (cmd == "play") {
             int id; double start; std::string list;
@@ -263,6 +328,31 @@ int main(int argc, char** argv) {
                     printf("OK suona %d su uscite", id);
                     for (int o : outs) printf(" %d", o + 1);
                     printf("\n");
+                }
+            }
+        } else if (cmd == "rate") {
+            double r = 0.0;
+            in >> r;
+            if (r <= 0.0) { printf("ERR frequenza non valida\n"); }
+            else if (ASIOCanSampleRate(r) != ASE_OK) { printf("ERR il driver non supporta %.0f Hz\n", r); }
+            else {
+                std::map<int, Clip> nuovi;
+                { std::lock_guard<std::mutex> lk(mtx); nuovi = clips; }
+                for (auto& kv : nuovi) rebuild(kv.second, r);
+                ASIOStop();
+                ASIODisposeBuffers();
+                ASIOSetSampleRate(r);
+                sampleRate = r;
+                long mn2, mx2, pref2, gran2;
+                ASIOGetBufferSize(&mn2, &mx2, &pref2, &gran2);
+                bufSize = pref2;
+                if (ASIOCreateBuffers(infos, numOut, bufSize, &callbacks) != ASE_OK) {
+                    printf("ERR ricreazione buffer a %.0f Hz\n", r);
+                } else {
+                    mix.assign((size_t)numOut * bufSize, 0.0f);
+                    { std::lock_guard<std::mutex> lk(mtx); clips = std::move(nuovi); voices.clear(); }
+                    ASIOStart();
+                    printf("OK frequenza %.0f Hz, buffer %ld\n", r, bufSize);
                 }
             }
         } else if (cmd == "vol") {
